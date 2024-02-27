@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "./interface/ISocialPosts.sol";
-import "./SocialPosts.sol";
-
-
 contract UserAuthentication {
-
     enum Roles {
         USER,
         MODERATOR,
@@ -20,21 +15,13 @@ contract UserAuthentication {
 
     mapping(address => bool) isRegistered;
     mapping(address => User) userDetails;
-    mapping(address => address) public userPostsContract;
-
 
     event UserRegistered(address indexed _newUserAddr, string username);
     event NewModeratorAdded(address indexed _newModerator);
     event ModeratorRemoved(address indexed _newModerator);
 
-
     function registerUser(string memory _username) public {
         require(!isRegistered[msg.sender], "Cannot register twice");
-
-        SocialPosts _newContract = new SocialPosts(msg.sender);
-        address _newContractAddr = address(_newContract);
-
-        userPostsContract[msg.sender] = _newContractAddr;
 
         User memory _newUser = User(_username, Roles.USER);
 
@@ -45,8 +32,14 @@ contract UserAuthentication {
     }
 
     function addModerator(address _newModerator) public {
-        require(userDetails[msg.sender].userRoles == Roles.ADMIN, "Cannot add moderator, contact admin");
-        require(isRegistered[_newModerator], "Cannot make unregistered address as moderator");
+        require(
+            userDetails[msg.sender].userRoles == Roles.ADMIN,
+            "Cannot add moderator, contact admin"
+        );
+        require(
+            isRegistered[_newModerator],
+            "Cannot make unregistered address as moderator"
+        );
 
         User storage _user = userDetails[_newModerator];
         _user.userRoles = Roles.MODERATOR;
@@ -55,9 +48,15 @@ contract UserAuthentication {
     }
 
     function removeModerator(address _moderator) public {
-        require(userDetails[msg.sender].userRoles == Roles.ADMIN, "Cannot remove moderator, contact admin");
+        require(
+            userDetails[msg.sender].userRoles == Roles.ADMIN,
+            "Cannot remove moderator, contact admin"
+        );
         require(isRegistered[_moderator], "unregistered address");
-        require(userDetails[_moderator].userRoles == Roles.MODERATOR, "Not a moderator");
+        require(
+            userDetails[_moderator].userRoles == Roles.MODERATOR,
+            "Not a moderator"
+        );
 
         User storage _user = userDetails[_moderator];
         _user.userRoles = Roles.USER;
@@ -65,7 +64,11 @@ contract UserAuthentication {
         emit ModeratorRemoved(_moderator);
     }
 
-    function getUserDetails(address _userAddr) public view returns (User memory) {
+    function getUserDetails(address _userAddr)
+        public
+        view
+        returns (User memory)
+    {
         require(isRegistered[_userAddr], "address not registered");
         User memory _user = userDetails[_userAddr];
 

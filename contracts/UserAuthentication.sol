@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "./interface/ISocialPosts.sol";
+import "./SocialPosts.sol";
+
+
 contract UserAuthentication {
 
     enum Roles {
@@ -16,6 +20,8 @@ contract UserAuthentication {
 
     mapping(address => bool) isRegistered;
     mapping(address => User) userDetails;
+    mapping(address => address) public userPostsContract;
+
 
     event UserRegistered(address indexed _newUserAddr, string username);
     event NewModeratorAdded(address indexed _newModerator);
@@ -24,7 +30,14 @@ contract UserAuthentication {
 
     function registerUser(string memory _username) public {
         require(!isRegistered[msg.sender], "Cannot register twice");
+
+        SocialPosts _newContract = new SocialPosts(msg.sender);
+        address _newContractAddr = address(_newContract);
+
+        userPostsContract[msg.sender] = _newContractAddr;
+
         User memory _newUser = User(_username, Roles.USER);
+
         userDetails[msg.sender] = _newUser;
         isRegistered[msg.sender] = true;
 

@@ -1,21 +1,17 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
 
-  const lockedAmount = ethers.parseEther("0.001");
+  const socialMediaFactory = await ethers.deployContract("SocialMediaFactory");
 
-  const lock = await ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  await socialMediaFactory.waitForDeployment();
 
-  await lock.waitForDeployment();
+  const createSocialMediaTx = await socialMediaFactory.createSocialMedia("Admin");
+  createSocialMediaTx.wait();
 
   console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
+    `SocialMediaFactory deployed to ${socialMediaFactory.target}\n
+    SocialMedia deployed to ${socialMediaFactory.getLastSocialMedia()}\n`
   );
 }
 

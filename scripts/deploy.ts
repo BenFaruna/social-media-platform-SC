@@ -11,7 +11,7 @@ async function main() {
 
   console.log(
     `SocialMediaFactory deployed to ${socialMediaFactory.target}\n
-    SocialMedia deployed to ${socialMediaFactory.getLastSocialMedia()}\n`
+    SocialMedia deployed to ${await socialMediaFactory.getLastSocialMedia()}\n`
   );
 }
 

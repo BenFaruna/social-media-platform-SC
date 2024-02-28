@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./UserAuthentication.sol";
+import "./Errors.sol";
 
 contract SocialMedia is UserAuthentication, ERC721 {
     address public owner;
@@ -42,15 +43,24 @@ contract SocialMedia is UserAuthentication, ERC721 {
     event CommunityCreated(address indexed _creator, string _name);
     event CommunityJoined(address indexed _user, uint256 _id);
 
-    constructor(string memory _username) ERC721("SocialFI", "SocialNFT") {
-        owner = msg.sender;
+    constructor(
+        address _owner,
+        string memory _username
+    ) ERC721("SocialFI", "SocialNFT") {
+        owner = _owner;
         User memory _admin = User(_username, Roles.ADMIN);
-        userDetails[msg.sender] = _admin;
-        isRegistered[msg.sender] = true;
+        userDetails[_owner] = _admin;
+        isRegistered[_owner] = true;
     }
 
     function postStatus(string memory _statusText, string memory _file) public {
-        require(msg.sender != address(0), "zero address call");
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+        if (!isRegistered[msg.sender]) {
+            revert Errors.UNREGISTERED_ADDRESS();
+        }
+
         _postId = _postId + 1;
 
         Post memory _newPost = Post(_statusText, _file, block.timestamp);
@@ -64,18 +74,27 @@ contract SocialMedia is UserAuthentication, ERC721 {
     }
 
     function getLastPost(address _user) public view returns (Post memory) {
-        require(msg.sender != address(0), "zero address call");
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
         Post[] memory _posts = userPosts[_user];
 
-        require(_posts.length > 0, "User does not have any post");
+        if (_posts.length == 0) {
+            revert Errors.NO_USER_POST();
+        }
 
         Post memory _lastPost = _posts[_posts.length - 1];
         return _lastPost;
     }
 
     function commentOnPost(uint256 _id, string memory _comment) public {
-        require(msg.sender != address(0), "zero address call");
-        require(isRegistered[msg.sender], "unregistered account");
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (!isRegistered[msg.sender]) {
+            revert Errors.UNREGISTERED_ADDRESS();
+        }
 
         Comment memory _newComment = Comment(msg.sender, _id, _comment);
         commentByPostId[_id].push(_newComment);
@@ -83,14 +102,17 @@ contract SocialMedia is UserAuthentication, ERC721 {
         emit PostComment(msg.sender, _postId);
     }
 
-    function createCommunity(string memory _name, string memory _description)
-        public
-    {
-        require(msg.sender != address(0), "zero address call");
-        require(
-            isRegistered[msg.sender],
-            "only registered members can create community"
-        );
+    function createCommunity(
+        string memory _name,
+        string memory _description
+    ) public {
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (!isRegistered[msg.sender]) {
+            revert Errors.UNREGISTERED_ADDRESS();
+        }
 
         _communityId = _communityId + 1;
 
@@ -108,11 +130,13 @@ contract SocialMedia is UserAuthentication, ERC721 {
     }
 
     function joinCommunity(uint256 _id) public {
-        require(msg.sender != address(0), "zero address call");
-        require(
-            !isCommunityMember[_id][msg.sender],
-            "cannot join community twice"
-        );
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (!isCommunityMember[_id][msg.sender]) {
+            revert Errors.CANNOT_JOIN_COMMUNITY_TWICE();
+        }
 
         isCommunityMember[_id][msg.sender] = true;
         emit CommunityJoined(msg.sender, _id);
@@ -123,11 +147,13 @@ contract SocialMedia is UserAuthentication, ERC721 {
         string memory _statusText,
         string memory _file
     ) public {
-        require(msg.sender != address(0), "zero address call");
-        require(
-            isCommunityMember[_id][msg.sender],
-            "only community members can post"
-        );
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (!isCommunityMember[_id][msg.sender]) {
+            revert Errors.ONLY_COMMUNITY_MEMBER();
+        }
 
         Post memory _newPost = Post(_statusText, _file, block.timestamp);
 
@@ -136,14 +162,42 @@ contract SocialMedia is UserAuthentication, ERC721 {
         emit StatusPosted(owner, _postId);
     }
 
-    function getCommunityPosts(uint256 _id) public view returns (Post[] memory) {
-        require(msg.sender != address(0), "zero address call");
-        require(_id > 0, "community starts from 1");
-        require(_id <= _communityId, "community does not exist");
-        require(
-            isCommunityMember[_id][msg.sender],
-            "only community members can view posts"
-        );
+    function getCommunityPosts(
+        uint256 _id
+    ) public view returns (Post[] memory) {
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (_id == 0) {
+            revert Errors.INVALID_COMMUNITY_ID();
+        }
+
+        if (_id > _communityId) {
+            revert Errors.INVALID_COMMUNITY_ID();
+        }
+
+        if (
+            !(isCommunityMember[_id][msg.sender] ||
+                userDetails[msg.sender].userRoles >= Roles.MODERATOR)
+        ) {
+            revert Errors.ONLY_COMMUNITY_MEMBER();
+        }
+
         return communityPosts[_id];
+    }
+
+    function getUserPosts(
+        address _userAddr
+    ) public view returns (Post[] memory) {
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (!isRegistered[_userAddr]) {
+            revert Errors.UNREGISTERED_ADDRESS();
+        }
+
+        return userPosts[_userAddr];
     }
 }

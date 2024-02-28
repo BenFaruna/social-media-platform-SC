@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import "./SocialMedia.sol";
 
-
 contract SocialMediaFactory {
     address owner;
 
@@ -11,24 +10,36 @@ contract SocialMediaFactory {
 
     event SocialMediaCreated();
 
-
-    constructor () {
+    constructor() {
         owner = msg.sender;
     }
 
     function createSocialMedia(string memory _adminUsername) public {
-        require(msg.sender != address(0), "address zero call");
-        require(msg.sender == owner, "only owner can create social media");
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
 
-        SocialMedia _newSocialMedia = new SocialMedia(_adminUsername);
+        if (msg.sender != owner) {
+            revert Errors.ONLY_OWNER();
+        }
+
+        SocialMedia _newSocialMedia = new SocialMedia(
+            msg.sender,
+            _adminUsername
+        );
         deploySocialMedia.push(address(_newSocialMedia));
 
         emit SocialMediaCreated();
     }
 
     function getLastSocialMedia() public view returns (address) {
-        require(msg.sender != address(0), "address zero call");
-        require(deploySocialMedia.length > 0, "no media created");
+        if (msg.sender == address(0)) {
+            revert Errors.ZERO_ADDRESS_CALL();
+        }
+
+        if (deploySocialMedia.length == 0) {
+            revert Errors.NO_SOCIAL_MEDIA_CREATED();
+        }
 
         return deploySocialMedia[deploySocialMedia.length - 1];
     }
